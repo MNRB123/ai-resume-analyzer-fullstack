@@ -1,0 +1,21 @@
+import { Router } from "express"; import multer from "multer"; import { authRequired } from "../middleware/auth.js";
+import { parseResumeFile } from "../services/resumeParserService.js"; import { skillGapAnalysis } from "../utils/skills.js";
+import { getEmbedding,getStructuredAnalysis } from "../services/openaiService.js"; import { upsertVectors,querySimilarContext,getVectorStatus } from "../services/ragService.js";
+import { enrichAtsKeywords } from "../services/atsService.js"; import { portfolioSuggestionsFromGaps } from "../services/portfolioService.js";
+import { Resume } from "../models/Resume.js"; import { JobDescription } from "../models/JobDescription.js"; import { Analysis } from "../models/Analysis.js";
+const r=Router(), upload=multer({storage:multer.memoryStorage()});
+r.get("/vector-status",authRequired,async(_q,s)=>{const st=await getVectorStatus(); s.status(st.ok?200:503).json(st);});
+r.post("/run",authRequired,upload.single("resumeFile"),async(req,res)=>{try{
+ const {resumeText="",jobDescription="",targetRole="Target Role"}=req.body; if(!jobDescription.trim()) return res.status(400).json({message:"jobDescription required"});
+ const parsed=await parseResumeFile(req.file); const final=(resumeText||parsed||"").trim(); if(!final) return res.status(400).json({message:"Provide resume text or file"});
+ const gap=skillGapAnalysis(final,jobDescription); const rEmb=await getEmbedding(final), jEmb=await getEmbedding(jobDescription);
+ await upsertVectors({id:`r-${Date.now()}`,text:final,embedding:rEmb,metadata:{type:"resume",userId:req.user.id}});
+ await upsertVectors({id:`j-${Date.now()}`,text:jobDescription,embedding:jEmb,metadata:{type:"jd",userId:req.user.id}});
+ const ctx=await querySimilarContext({embedding:jEmb,topK:4}); const ai=await getStructuredAnalysis({resumeText:final,jdText:jobDescription,targetRole,skillGap:gap,retrievedContext:ctx});
+ const result={targetRole,jobMatchScore:ai.jobMatchScore??0,skillGap:gap,atsKeywords:enrichAtsKeywords(ai.atsKeywords||[],gap),strengths:ai.strengths||[],weaknesses:ai.weaknesses||[],improvementTips:ai.improvementTips||[],portfolioSuggestions:[...new Set([...(ai.portfolioSuggestions||[]),...portfolioSuggestionsFromGaps(gap.missing)])],summary:ai.summary||""};
+ const rd=await Resume.create({userId:req.user.id,rawText:final,sourceType:req.file?"upload":"paste",fileName:req.file?.originalname});
+ const jd=await JobDescription.create({userId:req.user.id,title:targetRole,content:jobDescription});
+ const saved=await Analysis.create({userId:req.user.id,resumeId:rd._id,jobDescriptionId:jd._id,targetRole,result}); res.json({analysisId:saved._id,result});
+}catch(e){res.status(500).json({message:"Analysis failed",error:e.message});}});
+r.get("/history",authRequired,async(req,res)=>res.json(await Analysis.find({userId:req.user.id}).sort({createdAt:-1}).limit(20)));
+export default r;
