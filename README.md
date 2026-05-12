@@ -8,8 +8,8 @@ An AI-powered web application that helps job seekers optimize resumes for specif
 - Portfolio/Certification Suggestions
 
 ## Live Demo
-- Frontend: _Add your Vercel/Netlify URL_
-- Backend API: _Add your Render/AWS/Azure URL_
+- Frontend: http://localhost:3000  
+- Backend API: http://localhost:5000
 
 ## UI Preview
 
