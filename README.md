@@ -11,11 +11,11 @@ An AI-powered web application that helps job seekers optimize resumes for specif
 - Frontend: _Add your Vercel/Netlify URL_
 - Backend API: _Add your Render/AWS/Azure URL_
 
-## Screenshots / Demo GIF
-> Add images in `/assets` folder and update paths below.
+## UI Preview
 
-![Dashboard](assets/dashboard.png)
-![Analysis Result](assets/analysis-result.png)
+Full dashboard mockup (vector health, resume analysis form, and results):
+
+![AI Resume Analyzer – dashboard mockup](assets/ai-resume-analyzer-ui-mockup.png)
 
 ## Problem
 Many candidates apply with generic resumes that fail ATS filters and do not align with job descriptions.
@@ -69,6 +69,8 @@ This platform analyzes a resume against a target job description using AI + sema
 
 ```text
 ai-resume-analyzer-fullstack/
+├── assets/
+│   └── ai-resume-analyzer-ui-mockup.png
 ├── backend/
 │   ├── src/
 │   │   ├── config/
